@@ -1,0 +1,747 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="color-scheme" content="light dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Greenhill">
+<meta name="description" content="Sensordaten aus Home Assistant: Keller, Carport, Wetterstation und Aussenluft.">
+<title>Greenhill</title>
+<link rel="icon" href="data:,">
+</head>
+<body>
+<!-- Erzeugt von build_site.py aus index.html. Nicht hier bearbeiten. -->
+<style>
+/* Layout: eine Spalte, iOS-Home-App-Raster. Reihenfolge Haus > Wetter > Außenluft. Detailansichten per Hash-Routing in derselben Seite. */
+:root{
+  --bg:#F2F2F7; --bg-elev:#FFFFFF; --card:#FFFFFF; --card-2:#F2F2F7;
+  --label:#000000; --label-2:rgba(60,60,67,.60); --label-3:rgba(60,60,67,.30);
+  --sep:rgba(60,60,67,.29); --fill-3:rgba(118,118,128,.12);
+  --blue:#007AFF; --green:#34C759; --yellow:#FFCC00; --orange:#FF9500; --red:#FF3B30; --teal:#30B0C7; --indigo:#5856D6;
+  --shadow:0 1px 2px rgba(0,0,0,.04), 0 4px 16px rgba(0,0,0,.05);
+  --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Helvetica Neue",system-ui,"Segoe UI",Roboto,sans-serif;
+  --r-card:22px; --r-tile:20px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#000000; --bg-elev:#1C1C1E; --card:#1C1C1E; --card-2:#2C2C2E;
+    --label:#FFFFFF; --label-2:rgba(235,235,245,.60); --label-3:rgba(235,235,245,.30);
+    --sep:rgba(84,84,88,.65); --fill-3:rgba(118,118,128,.24);
+    --blue:#0A84FF; --green:#30D158; --yellow:#FFD60A; --orange:#FF9F0A; --red:#FF453A; --teal:#40C8E0; --indigo:#5E5CE6;
+    --shadow:none; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#000000; --bg-elev:#1C1C1E; --card:#1C1C1E; --card-2:#2C2C2E;
+  --label:#FFFFFF; --label-2:rgba(235,235,245,.60); --label-3:rgba(235,235,245,.30);
+  --sep:rgba(84,84,88,.65); --fill-3:rgba(118,118,128,.24);
+  --blue:#0A84FF; --green:#30D158; --yellow:#FFD60A; --orange:#FF9F0A; --red:#FF453A; --teal:#40C8E0; --indigo:#5E5CE6;
+  --shadow:none; color-scheme:dark;
+}
+
+body{
+  margin:0; background:var(--bg); color:var(--label);
+  font-family:var(--font); font-size:17px; line-height:1.3; -webkit-font-smoothing:antialiased;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:0 56px;
+}
+.wrap{max-width:560px;margin:0 auto}
+*{box-sizing:border-box}
+button{font-family:inherit;font-size:inherit;color:inherit}
+
+.hdr{padding:12px 4px 6px}
+.hdr h1{margin:0;font-size:34px;line-height:1.08;font-weight:700;letter-spacing:-.4px;
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display",var(--font);text-wrap:balance}
+.hdr .sub{margin-top:3px;font-size:15px;color:var(--label-2)}
+.stamp{font-variant-numeric:tabular-nums}
+
+.note{display:flex;gap:10px;align-items:flex-start;background:var(--card);border-radius:14px;
+  padding:11px 13px;margin:10px 0 2px;font-size:13px;color:var(--label-2);box-shadow:var(--shadow)}
+.note svg{flex:0 0 auto;margin-top:1px}
+.banner{display:none;gap:10px;align-items:flex-start;
+  background:color-mix(in srgb,var(--orange) 16%,var(--card));
+  border-radius:14px;padding:12px 14px;margin:10px 0 2px;font-size:14px;color:var(--label)}
+:root[data-stale="1"] .banner{display:flex}
+:root[data-stale="1"] .tile,:root[data-stale="1"] .hero,:root[data-stale="1"] .rows,
+:root[data-stale="1"] .khero,:root[data-stale="1"] .advice{opacity:.45;filter:grayscale(1)}
+
+.sec{margin-top:26px}
+.sec-h{display:flex;align-items:baseline;justify-content:space-between;padding:0 4px 9px}
+.sec-h h2{margin:0;font-size:22px;font-weight:700;letter-spacing:-.2px}
+.sec-h .meta{font-size:13px;color:var(--label-2)}
+
+/* ---- Keller-Hauptkarte ---- */
+.khero{position:relative;overflow:hidden;width:100%;text-align:left;border:0;cursor:pointer;
+  background:var(--card);border-radius:var(--r-card);box-shadow:var(--shadow);
+  padding:18px 18px 56px;display:block;transition:transform .14s ease}
+.khero:active{transform:scale(.985)}
+.khero .top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.khero .cap{font-size:13px;font-weight:600;color:var(--label-2);text-transform:uppercase;letter-spacing:.5px}
+.khero .n{font-size:46px;font-weight:600;letter-spacing:-1.2px;line-height:1;font-variant-numeric:tabular-nums;margin-top:7px}
+.khero .n i{font-size:20px;font-weight:500;font-style:normal;color:var(--label-2);margin-left:3px}
+.khero .side{display:flex;flex-direction:column;align-items:flex-end;gap:6px;text-align:right}
+.khero .kv{font-size:15px;color:var(--label-2);font-variant-numeric:tabular-nums}
+.khero .kv b{color:var(--label);font-weight:600}
+.khero .spark{position:absolute;left:0;right:0;bottom:0;height:56px;pointer-events:none}
+/* Ohne Verlaufskurve braucht die Karte den Platz unten nicht. */
+.khero.flach{padding-bottom:18px}
+
+/* ---- Hinweiskarte ---- */
+.advice{display:flex;gap:12px;align-items:flex-start;padding:15px;margin-top:12px;
+  background:var(--card);border-radius:var(--r-card);box-shadow:var(--shadow)}
+.advice .vi{width:34px;height:34px;border-radius:50%;flex:0 0 auto;display:grid;place-items:center}
+.advice .vt{font-size:17px;font-weight:600}
+.advice .vd{font-size:14px;color:var(--label-2);margin-top:3px;line-height:1.4}
+
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.tile{position:relative;min-width:0;aspect-ratio:1/1;background:var(--card);border-radius:var(--r-tile);
+  box-shadow:var(--shadow);border:0;cursor:pointer;padding:14px;overflow:hidden;
+  display:flex;flex-direction:column;justify-content:space-between;text-align:left;transition:transform .14s ease}
+.tile:active{transform:scale(.97)}
+.tile .ico{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:var(--fill-3);color:var(--label-2)}
+.tile .nm{font-size:14px;font-weight:600;color:var(--label-2);margin-top:9px;line-height:1.2}
+.tile .vl{font-size:30px;font-weight:600;letter-spacing:-.6px;font-variant-numeric:tabular-nums;margin-top:auto}
+.tile .vl i{font-size:17px;font-weight:500;font-style:normal;color:var(--label-2);margin-left:2px}
+.tile .sm{font-size:13px;color:var(--label-2);font-variant-numeric:tabular-nums;margin-top:2px}
+.tile .spark{position:absolute;left:0;right:0;bottom:0;height:42px;pointer-events:none}
+.tile.wide{aspect-ratio:auto;grid-column:1/-1;min-height:92px;flex-direction:row;align-items:center;gap:14px;justify-content:flex-start}
+.tile.wide .nm{margin:0}
+.tile.wide .vl{margin:0;font-size:24px}
+
+.hero{width:100%;text-align:left;border:0;cursor:pointer;background:var(--card);border-radius:var(--r-card);
+  box-shadow:var(--shadow);padding:18px;display:grid;grid-template-columns:1fr auto;gap:14px;align-items:center;
+  transition:transform .14s ease}
+.hero:active{transform:scale(.985)}
+.hero .cap{font-size:13px;font-weight:600;color:var(--label-2);text-transform:uppercase;letter-spacing:.5px}
+.hero .big{font-size:28px;font-weight:700;letter-spacing:-.3px;margin-top:4px;display:flex;align-items:center;gap:9px}
+.hero .dot{width:14px;height:14px;border-radius:50%;flex:0 0 auto}
+.hero .exp{font-size:14px;color:var(--label-2);margin-top:5px;max-width:30ch}
+.ring{width:84px;height:84px;flex:0 0 auto}
+
+.view[hidden]{display:none!important}
+.back{display:inline-flex;align-items:center;gap:3px;margin:8px 0 2px;background:none;border:0;
+  padding:6px 8px 6px 0;color:var(--blue);font-size:17px;cursor:pointer}
+.d-h{padding:4px 4px 2px}
+.d-h h1{margin:0;font-size:32px;font-weight:700;letter-spacing:-.4px}
+.d-h .sub{margin-top:3px;font-size:15px;color:var(--label-2)}
+.d-now{display:flex;align-items:flex-end;gap:10px;padding:14px 4px 2px}
+.d-now .n{font-size:52px;font-weight:600;letter-spacing:-1.4px;line-height:1;font-variant-numeric:tabular-nums}
+.d-now .u{font-size:20px;color:var(--label-2);padding-bottom:6px}
+
+.seg{display:flex;background:var(--fill-3);border-radius:9px;padding:2px;margin:16px 0 12px}
+.seg button{flex:1;border:0;background:transparent;border-radius:7px;padding:6px 0;font-size:13px;
+  font-weight:600;color:var(--label);cursor:pointer;transition:background .18s ease}
+.seg button[aria-selected="true"]{background:var(--card);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+
+.card{background:var(--card);border-radius:var(--r-card);box-shadow:var(--shadow);padding:14px;margin-bottom:14px}
+.card.pad0{padding:14px 10px 8px}
+.chart{width:100%;height:190px;display:block}
+.xax{display:flex;justify-content:space-between;padding:4px 6px 0;font-size:12px;color:var(--label-2);font-variant-numeric:tabular-nums}
+.stats{display:flex;margin-top:12px;border-top:1px solid var(--sep);padding-top:11px}
+.stats div{flex:1;min-width:0}
+.stats .k{font-size:12px;color:var(--label-2)}
+.stats .v{font-size:19px;font-weight:600;font-variant-numeric:tabular-nums;margin-top:1px}
+
+.rows{background:var(--card);border-radius:var(--r-card);box-shadow:var(--shadow);overflow:hidden;margin-bottom:14px}
+.row{display:flex;align-items:center;gap:12px;padding:12px 15px;border-top:1px solid var(--sep)}
+.row:first-child{border-top:0}
+.row .k{flex:1;min-width:0;font-size:16px}
+.row .k small{display:block;font-size:12px;color:var(--label-2);margin-top:2px;line-height:1.35}
+.row .v{font-size:16px;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+.pill{font-size:13px;font-weight:600;padding:4px 10px;border-radius:999px;white-space:nowrap}
+
+/* ---- Erklärtexte ---- */
+.info{background:var(--card);border-radius:var(--r-card);box-shadow:var(--shadow);margin-bottom:14px;overflow:hidden}
+.info > summary{list-style:none;cursor:pointer;padding:14px 15px;font-size:16px;font-weight:600;
+  display:flex;align-items:center;justify-content:space-between;gap:10px}
+.info > summary::-webkit-details-marker{display:none}
+.info > summary::after{content:"";width:8px;height:8px;border-right:2px solid var(--label-3);
+  border-bottom:2px solid var(--label-3);transform:rotate(45deg);flex:0 0 auto;margin-right:3px;transition:transform .2s ease}
+.info[open] > summary::after{transform:rotate(-135deg)}
+.info .body{padding:0 15px 4px;border-top:1px solid var(--sep)}
+.info dl{margin:0}
+.info dt{font-size:15px;font-weight:600;margin-top:14px}
+.info dd{margin:3px 0 0;font-size:14px;line-height:1.45;color:var(--label-2)}
+.info dd + dd{margin-top:5px}
+.info .last{padding-bottom:16px}
+.info .num{font-variant-numeric:tabular-nums;color:var(--label);font-weight:600}
+
+.strip{display:flex;gap:2px;height:26px;margin-top:4px}
+.strip span{flex:1;border-radius:2px;background:var(--fill-3)}
+.strip span.on{background:var(--blue)}
+
+.exp-txt{font-size:14px;color:var(--label-2);padding:0 5px;margin:-2px 0 20px;line-height:1.45}
+.foot{margin-top:30px;padding:0 4px}
+.foot .lbl{font-size:12px;color:var(--label-3);margin-bottom:7px}
+.foot .seg{margin:0}
+.foot .seg button{font-size:12px}
+.foot .cr{font-size:12px;color:var(--label-3);margin-top:12px}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+:focus-visible{outline:2px solid var(--blue);outline-offset:2px;border-radius:8px}
+</style>
+
+<div class="wrap">
+
+  <section class="view" id="v-home">
+    <header class="hdr">
+      <h1>Greenhill</h1>
+      <div class="sub">Sensordaten · <span class="stamp">Stand 12:12</span></div>
+    </header>
+
+    <div class="banner">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 9v4"/><path d="M12 17h.01"/><circle cx="12" cy="12" r="9"/></svg>
+      <div><b>Daten nicht aktuell.</b> Letzte Aktualisierung 10:36, das ist länger als 20 Minuten her. Die angezeigten Werte können veraltet sein.</div>
+    </div>
+
+    <div class="note" id="hinweis-verlauf">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg>
+      <div><b>Verlauf folgt.</b> Die Werte kommen live aus Home Assistant. Die Kurven für 24 Stunden, 7 und 30 Tage werden noch nicht mitgeschrieben.</div>
+    </div>
+
+    <!-- Haus steht oben -->
+    <section class="sec" style="margin-top:18px">
+      <div class="sec-h"><h2>Haus</h2><span class="meta">KNX</span></div>
+      <div id="haus"></div>
+    </section>
+
+    <!-- Wetter -->
+    <section class="sec">
+      <div class="sec-h"><h2>Wetter</h2><span class="meta">Wetterstation Dach</span></div>
+      <div class="grid" id="wetter"></div>
+    </section>
+
+    <!-- Außenluft -->
+    <section class="sec">
+      <div class="sec-h"><h2>Außenluft</h2><span class="meta">AirGradient OpenAir</span></div>
+      <div id="luft"></div>
+    </section>
+
+    <div class="foot">
+      <div class="lbl">Lädt sich alle fünf Minuten selbst nach</div>
+      <div class="cr">Greenhill · Home Assistant · beham.cc</div>
+    </div>
+  </section>
+
+  <section class="view" id="v-detail" hidden>
+    <button class="back" type="button" data-go="home">
+      <svg width="11" height="18" viewBox="0 0 11 18" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 1.5 2 9l7 7.5"/></svg>
+      Greenhill
+    </button>
+    <div id="detail"></div>
+  </section>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---------- Live-Daten ----------
+     Home Assistant schreibt alle fuenf Minuten eine JSON-Datei nach GitHub
+     (/config/pyscript/apps/greenhill.py). Die Datei ist oeffentlich lesbar und
+     liefert access-control-allow-origin: *, deshalb kann diese Seite sie direkt
+     aus dem Browser laden - ohne Zugang zu Home Assistant und ohne offene
+     Schnittstelle im Haus. */
+  var QUELLE="https://raw.githubusercontent.com/Rasnungwi/greenhill-data/main/daten.json";
+  var ALT_MIN=20;   /* ab hier gelten die Werte als veraltet */
+  var TAKT=300;     /* Sekunden bis zum naechsten Nachladen */
+
+  var D=null,fehler=null;
+
+  /* Messgroessen: Beschriftung, Einheit, Farbe, Pfad in der JSON-Datei */
+  var M={
+    dach:{name:"Temperatur Dach",unit:"°C",dec:1,color:"--orange",p:["wetter","temperatur"]},
+    wind:{name:"Windgeschwindigkeit",unit:"km/h",dec:1,color:"--teal",p:["wetter","wind_kmh"]},
+    keller_t:{name:"Temperatur Keller",unit:"°C",dec:1,color:"--orange",p:["haus","keller","temperatur"]},
+    keller_h:{name:"Luftfeuchte Keller",unit:"%",dec:1,color:"--blue",p:["haus","keller","feuchte"]},
+    keller_td:{name:"Taupunkt Keller",unit:"°C",dec:1,color:"--indigo",p:["haus","keller","taupunkt"]},
+    carport_t:{name:"Temperatur Carport",unit:"°C",dec:1,color:"--orange",p:["haus","carport","temperatur"]},
+    carport_h:{name:"Luftfeuchte Carport",unit:"%",dec:1,color:"--blue",p:["haus","carport","feuchte"]},
+    carport_td:{name:"Taupunkt Carport",unit:"°C",dec:1,color:"--indigo",p:["haus","carport","taupunkt"]},
+    oa_t:{name:"Temperatur außen",unit:"°C",dec:1,color:"--orange",p:["aussenluft","temperatur"]},
+    oa_h:{name:"Luftfeuchte außen",unit:"%",dec:1,color:"--blue",p:["aussenluft","feuchte"]},
+    pm1:{name:"PM1",unit:"µg/m³",dec:1,color:"--yellow",p:["aussenluft","pm1"]},
+    pm25:{name:"PM2,5",unit:"µg/m³",dec:1,color:"--yellow",p:["aussenluft","pm25"]},
+    pm10:{name:"PM10",unit:"µg/m³",dec:1,color:"--yellow",p:["aussenluft","pm10"]},
+    pm03:{name:"PM0,3",unit:"1/dl",dec:0,color:"--label-2",p:["aussenluft","pm03"]},
+    co2:{name:"CO₂",unit:"ppm",dec:0,color:"--green",p:["aussenluft","co2"]},
+    voc:{name:"VOC-Index",unit:"",dec:0,color:"--indigo",p:["aussenluft","voc"]},
+    nox:{name:"NOₓ-Index",unit:"",dec:0,color:"--teal",p:["aussenluft","nox"]}
+  };
+
+  var RBEZ={"24h":["vor 24 Stunden","jetzt"],"7d":["vor 7 Tagen","heute"],"30d":["vor 30 Tagen","heute"]};
+
+  function tief(pfad){
+    var o=D,i;
+    for(i=0;i<pfad.length;i++){
+      if(o===null||o===undefined||typeof o!=="object")return null;
+      o=o[pfad[i]];
+    }
+    return (o===undefined)?null:o;
+  }
+  function met(k){var m=Object.assign({},M[k]);m.val=tief(m.p);return m}
+
+  /* Verlaufsdaten liefert die Datei noch nicht. Sobald unter "verlauf" Reihen
+     stehen, zeichnen Sparklines und Diagramme von selbst. */
+  function series(key,range){
+    var v=tief(["verlauf",key,range]);
+    return (v&&v.length>1)?v:null;
+  }
+
+  function fmt(v,dec){
+    if(v===null||v===undefined||isNaN(v))return "—";
+    return Number(v).toFixed(dec).replace(".",",");
+  }
+  function val(key){
+    var m=met(key);
+    return fmt(m.val,m.dec)+((m.unit&&m.val!==null)?"&nbsp;"+m.unit:"");
+  }
+
+  /* ---------- Kleine Helfer ---------- */
+  function zwei(n){return (n<10?"0":"")+n}
+  function uhr(d){return zwei(d.getHours())+":"+zwei(d.getMinutes())}
+  function tag(d){return d.getDate()+"."+(d.getMonth()+1)+"."}
+  function standDatum(){
+    if(!D||!D.stand)return null;
+    var d=new Date(D.stand);
+    return isNaN(d.getTime())?null:d;
+  }
+  function standText(){
+    if(fehler)return "keine Verbindung";
+    var s=standDatum();
+    return s?("Stand "+uhr(s)):"lädt …";
+  }
+  function windWort(){
+    var v=met("wind").val;
+    if(v===null)return "";
+    if(v<1)return "Windstille";
+    if(v<6)return "leiser Zug";
+    if(v<12)return "leichte Brise";
+    if(v<20)return "schwache Brise";
+    if(v<29)return "mäßige Brise";
+    if(v<39)return "frische Brise";
+    return "starker Wind";
+  }
+  function regenText(){
+    var r=tief(["wetter","regen"]);
+    return r===true?"Es regnet":(r===false?"Trocken":"—");
+  }
+  function regenPill(){
+    var r=tief(["wetter","regen"]);
+    return r===true?["Regen","--blue"]:(r===false?["trocken","--blue"]:null);
+  }
+  function regenSeit(){
+    var s=tief(["wetter","regen_seit"]);
+    if(!s)return "";
+    var d=new Date(s);
+    return isNaN(d.getTime())?"":("seit "+tag(d)+" "+uhr(d));
+  }
+  function cpAbstand(){
+    var t=met("carport_t").val,d=met("carport_td").val;
+    return (t===null||d===null)?null:(t-d);
+  }
+  function pmPill(v,gelb,rot){
+    if(v===null)return null;
+    if(v>=rot)return["hoch","--red"];
+    if(v>=gelb)return["erhöht","--orange"];
+    return["gut","--green"];
+  }
+
+  function path(vals,w,h,pad){
+    var lo=Math.min.apply(null,vals),hi=Math.max.apply(null,vals),sp=hi-lo||1;
+    lo-=sp*.18;hi+=sp*.18;sp=hi-lo;
+    var pts=vals.map(function(v,i){return[pad+i/(vals.length-1)*(w-pad*2),h-pad-(v-lo)/sp*(h-pad*2)]});
+    var d="M"+pts[0][0].toFixed(1)+" "+pts[0][1].toFixed(1);
+    for(var i=1;i<pts.length;i++){var p0=pts[i-1],p1=pts[i],cx=(p0[0]+p1[0])/2;
+      d+="C"+cx.toFixed(1)+" "+p0[1].toFixed(1)+","+cx.toFixed(1)+" "+p1[1].toFixed(1)+","+p1[0].toFixed(1)+" "+p1[1].toFixed(1)}
+    return{d:d,pts:pts};
+  }
+
+  function sparkSVG(key,el,h){
+    if(!el)return;
+    h=h||42;
+    var vals=series(key,"24h");
+    if(!vals){el.innerHTML="";el.style.display="none";return}
+    el.style.display="";
+    var w=200,g=path(vals,w,h,3),c="var("+met(key).color+")",id="sp-"+key;
+    el.setAttribute("viewBox","0 0 "+w+" "+h);
+    el.setAttribute("preserveAspectRatio","none");
+    el.innerHTML='<defs><linearGradient id="'+id+'" x1="0" y1="0" x2="0" y2="1">'+
+      '<stop offset="0" stop-color="'+c+'" stop-opacity=".32"/><stop offset="1" stop-color="'+c+'" stop-opacity="0"/></linearGradient></defs>'+
+      '<path d="'+g.d+' L'+w+' '+h+' L0 '+h+' Z" fill="url(#'+id+')"/>'+
+      '<path d="'+g.d+'" fill="none" stroke="'+c+'" stroke-width="2" stroke-linecap="round" vector-effect="non-scaling-stroke"/>';
+  }
+
+  function chartSVG(key,range){
+    var m=met(key),vals=series(key,range);
+    if(!vals)return '<div class="card"><p class="exp-txt" style="margin:0">Für diesen Zeitraum liegen noch keine Verlaufsdaten vor. Home Assistant schreibt bisher nur den aktuellen Messwert heraus; die Reihen für 24 Stunden, 7 und 30 Tage folgen aus den Langzeitstatistiken.</p></div>';
+    var w=640,h=190,pad=14,g=path(vals,w,h,pad),c="var("+m.color+")";
+    var lo=Math.min.apply(null,vals),hi=Math.max.apply(null,vals);
+    var avg=vals.reduce(function(a,b){return a+b},0)/vals.length,grid="",k,y;
+    for(k=0;k<=3;k++){y=pad+(h-pad*2)*k/3;grid+='<line x1="'+pad+'" y1="'+y.toFixed(1)+'" x2="'+(w-pad)+'" y2="'+y.toFixed(1)+'" stroke="var(--sep)" stroke-width="1" vector-effect="non-scaling-stroke"/>'}
+    var last=g.pts[g.pts.length-1],id="cg-"+key+"-"+range;
+    var lab=RBEZ[range]||["",""];
+    var note="";
+    return '<div class="card pad0"><svg class="chart" viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="none" role="img" aria-label="'+m.name+' '+range+'">'+
+      '<defs><linearGradient id="'+id+'" x1="0" y1="0" x2="0" y2="1">'+
+      '<stop offset="0" stop-color="'+c+'" stop-opacity=".30"/><stop offset="1" stop-color="'+c+'" stop-opacity="0"/></linearGradient></defs>'+
+      grid+'<path d="'+g.d+' L'+(w-pad)+' '+(h-pad)+' L'+pad+' '+(h-pad)+' Z" fill="url(#'+id+')"/>'+
+      '<path d="'+g.d+'" fill="none" stroke="'+c+'" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>'+
+      '<circle cx="'+last[0].toFixed(1)+'" cy="'+last[1].toFixed(1)+'" r="4" fill="'+c+'"/></svg>'+
+      '<div class="xax"><span>'+lab[0]+'</span><span>'+lab[1]+'</span></div>'+note+
+      '<div class="stats" style="padding:11px 6px 6px">'+
+        '<div><div class="k">Minimum</div><div class="v">'+fmt(lo,m.dec)+'</div></div>'+
+        '<div><div class="k">Mittel</div><div class="v">'+fmt(avg,m.dec)+'</div></div>'+
+        '<div><div class="k">Maximum</div><div class="v">'+fmt(hi,m.dec)+'</div></div>'+
+      '</div></div>';
+  }
+
+  function row(k,v,sub,pill){
+    return '<div class="row"><div class="k">'+k+(sub?'<small>'+sub+'</small>':'')+'</div>'+
+      (pill?'<span class="pill" style="background:color-mix(in srgb,var('+pill[1]+') 18%,transparent);color:var('+pill[1]+')">'+pill[0]+'</span>':'')+
+      '<div class="v">'+v+'</div></div>';
+  }
+
+  var ICON={
+    check:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5 9.5 18 20 6.5"/></svg>',
+    warn:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 8v5"/><path d="M12 17h.01"/><path d="M10.3 3.3 2.5 17a2 2 0 0 0 1.7 3h15.6a2 2 0 0 0 1.7-3L13.7 3.3a2 2 0 0 0-3.4 0z"/></svg>'
+  };
+  function advice(tone,title,text){
+    var c=tone==="warn"?"--orange":"--green",i=tone==="warn"?ICON.warn:ICON.check;
+    return '<div class="advice"><div class="vi" style="background:color-mix(in srgb,var('+c+') 18%,transparent);color:var('+c+')">'+i+'</div>'+
+      '<div><div class="vt">'+title+'</div><div class="vd">'+text+'</div></div></div>';
+  }
+
+  /* ---------- Kellerlage ----------
+     Alle Bewertungen kommen aus Home Assistant; diese Seite rechnet nichts
+     nach, sie uebersetzt nur in Text und Farbe. */
+  function keller(){
+    var k=tief(["haus","keller"])||{};
+    var b={h:k.feuchte,td:k.taupunkt,ahIn:k.absolute_feuchte,
+           ahOut:tief(["aussenluft","absolute_feuchte"]),
+           wand:k.wandfeuchte,diff:k.feuchte_differenz,hinweis:k.hinweis,
+           lueftung:k.lueftung};
+    var z=k.entfeuchter,warn=(z==="steht"&&b.h!==null&&b.h>65);
+
+    if(z==="laeuft"){
+      b.pump={state:"läuft",tone:"ok",pill:["aktiv","--green"],
+              since:(k.zacken_4h||0)+" Zacken in vier Stunden · Takt "+fmt(k.takt_min,0)+"&nbsp;min"};
+    }else if(z==="steht"){
+      b.pump={state:"steht",tone:warn?"warn":"ok",
+              pill:warn?["prüfen","--orange"]:["ruht","--label-2"],
+              since:"kein Sägezahn im Vier-Stunden-Fenster"};
+    }else{
+      b.pump={state:"unbekannt",tone:"ok",pill:["unklar","--label-2"],
+              since:"weniger als vier Stunden lückenlose Messwerte"};
+    }
+
+    var rk={gering:["unkritisch","--green","grün"],
+            erhoeht:["erhöht","--orange","beobachten"],
+            hoch:["hoch","--red","handeln"]}[k.schimmelrisiko]||["unbekannt","--label-2","—"];
+    b.risk={text:rk[0],tone:rk[1],pill:rk[2]};
+
+    var zahlen="";
+    if(b.ahIn!==null&&b.ahOut!==null)
+      zahlen=" Außenluft "+fmt(b.ahOut,1)+"&nbsp;g/m³ gegen Keller "+fmt(b.ahIn,1)+
+             "&nbsp;g/m³, Differenz "+fmt(b.diff,1)+"&nbsp;g/m³.";
+
+    var titel,text;
+    if(warn){
+      titel="Bitte Luftentfeuchter aktivieren";
+      text="Die relative Feuchte liegt bei "+fmt(b.h,1)+"&nbsp;% und im Verlauf fehlt der "+
+           "Sägezahn — das Gerät läuft nicht. Vermutlich ohne Strom oder der Wassertank ist voll."+zahlen;
+    }else{
+      if(z==="laeuft")titel="Luftentfeuchter läuft";
+      else if(b.lueftung==="lueften")titel="Lüften bringt Trocknung";
+      else if(b.lueftung==="grenzwertig")titel="Lüften bringt derzeit wenig";
+      else if(b.lueftung==="nicht_lueften")titel="Fenster besser geschlossen";
+      else titel="Keller";
+      text=(b.hinweis||"Kein Hinweis vorhanden.")+zahlen;
+    }
+    b.advice=advice(warn?"warn":"ok",titel,text);
+    return b;
+  }
+
+  /* ---------- Wetter und Aussenluft ---------- */
+  function renderWetter(){
+    var el=document.getElementById("wetter");
+    if(!el)return;
+    el.innerHTML=
+      '<button class="tile" data-go="wetter">'+
+        '<div class="ico"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 13.5V5a2 2 0 1 1 4 0v8.5a4 4 0 1 1-4 0z"/></svg></div>'+
+        '<div><div class="nm">Temperatur</div><div class="vl">'+fmt(met("dach").val,1)+'<i>°C</i></div></div>'+
+        (series("dach","24h")?'<svg class="spark" data-spark="dach" viewBox="0 0 200 42" preserveAspectRatio="none"></svg>':"")+
+      '</button>'+
+      '<button class="tile" data-go="wetter">'+
+        '<div class="ico"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 8h11a3 3 0 1 0-3-3"/><path d="M3 16h14a3 3 0 1 1-3 3"/><path d="M3 12h18"/></svg></div>'+
+        '<div><div class="nm">Wind</div><div class="vl">'+fmt(met("wind").val,1)+'<i>km/h</i></div>'+
+        '<div class="sm">'+windWort()+'</div></div>'+
+        (series("wind","24h")?'<svg class="spark" data-spark="wind" viewBox="0 0 200 42" preserveAspectRatio="none"></svg>':"")+
+      '</button>'+
+      '<button class="tile wide" data-go="wetter">'+
+        '<div class="ico" style="background:color-mix(in srgb,var(--blue) 16%,transparent);color:var(--blue)">'+
+          '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3s6 6.5 6 10a6 6 0 0 1-12 0c0-3.5 6-10 6-10z"/></svg>'+
+        '</div>'+
+        '<div style="flex:1;min-width:0"><div class="nm">Regen</div><div class="vl">'+regenText()+'</div></div>'+
+        '<div class="sm" style="text-align:right">'+(regenSeit()||"&nbsp;")+'</div>'+
+      '</button>';
+    el.querySelectorAll("[data-spark]").forEach(function(x){sparkSVG(x.dataset.spark,x)});
+  }
+
+  function ampel(){
+    var t={gruen:["Grün","--green","Keine Rauchbelastung. Feinstaub und VOC im Normalbereich."],
+           gelb:["Gelb","--yellow","Erhöhte Rauchbelastung oder stehende Luft. Jetzt besser nicht lüften."],
+           rot:["Rot","--red","Frischer Rauch in der Nähe. Fenster geschlossen halten."]};
+    return t[tief(["aussenluft","brandampel"])]||["—","--label-2","Kein Wert vorhanden."];
+  }
+
+  function renderLuft(){
+    var el=document.getElementById("luft");
+    if(!el)return;
+    var a=ampel(),idx=tief(["aussenluft","smokeindex"]),
+        umf=2*Math.PI*34,an=umf*Math.max(0,Math.min(1,(idx===null?0:idx)/100));
+    el.innerHTML='<button class="hero" data-go="luft">'+
+      '<div><div class="cap">Brandampel</div>'+
+      '<div class="big"><span class="dot" style="background:var('+a[1]+')"></span>'+a[0]+'</div>'+
+      '<div class="exp">'+a[2]+'</div></div>'+
+      '<svg class="ring" viewBox="0 0 84 84" role="img" aria-label="Smoke-Index '+(idx===null?"unbekannt":idx+" Prozent")+'">'+
+        '<circle cx="42" cy="42" r="34" fill="none" stroke="var(--fill-3)" stroke-width="9"/>'+
+        '<circle cx="42" cy="42" r="34" fill="none" stroke="var('+a[1]+')" stroke-width="9" stroke-linecap="round" '+
+        'stroke-dasharray="'+an.toFixed(1)+' '+umf.toFixed(1)+'" transform="rotate(-90 42 42)"/>'+
+        '<text x="42" y="40" text-anchor="middle" fill="var(--label)" font-size="21" font-weight="600">'+(idx===null?"—":idx)+'</text>'+
+        '<text x="42" y="55" text-anchor="middle" fill="var(--label-2)" font-size="10">Smoke</text>'+
+      '</svg></button>';
+  }
+
+  /* ---------- Kopf, Banner, Aktualitaet ---------- */
+  function kopf(){
+    var s=standDatum(),alt=s?(Date.now()-s.getTime())/60000:null;
+    var veraltet=!!fehler||(alt!==null&&alt>ALT_MIN);
+    document.documentElement.dataset.stale=veraltet?"1":"";
+    document.querySelectorAll(".stamp").forEach(function(el){el.textContent=standText()});
+    var b=document.querySelector(".banner div");
+    if(b){
+      b.innerHTML=fehler
+        ? '<b>Keine Verbindung.</b> Die Messwerte konnten nicht geladen werden ('+fehler+
+          '). Es werden keine aktuellen Zahlen angezeigt.'
+        : '<b>Daten nicht aktuell.</b> Letzte Aktualisierung '+(s?uhr(s):"unbekannt")+
+          ', das ist länger als '+ALT_MIN+' Minuten her. Die angezeigten Werte können veraltet sein.';
+    }
+    var hv=document.getElementById("hinweis-verlauf");
+    if(hv)hv.style.display=tief(["verlauf"])?"none":"";
+  }
+
+  function renderHaus(){
+    var K=keller(),el=document.getElementById("haus");
+    el.innerHTML=
+      '<button class="khero'+(series("keller_h","24h")?"":" flach")+'" data-go="keller">'+
+        '<div class="top">'+
+          '<div><div class="cap">Keller · Luftfeuchte</div>'+
+          '<div class="n">'+fmt(K.h,1)+'<i>%</i></div></div>'+
+          '<div class="side">'+
+            '<span class="pill" style="background:color-mix(in srgb,var('+K.risk.tone+') 18%,transparent);color:var('+K.risk.tone+')">'+K.risk.pill+'</span>'+
+            '<div class="kv"><b>'+fmt(met("keller_t").val,1)+'&nbsp;°C</b> Raum</div>'+
+            '<div class="kv">Taupunkt <b>'+fmt(K.td,1)+'&nbsp;°C</b></div>'+
+            '<div class="kv">Entfeuchter <b>'+K.pump.state+'</b></div>'+
+          '</div>'+
+        '</div>'+
+        (series("keller_h","24h")?'<svg class="spark" data-spark="keller_h"></svg>':"")+
+      '</button>'+
+      K.advice+
+      '<div class="grid" style="margin-top:12px">'+
+        '<button class="tile wide" data-go="carport">'+
+          '<div class="ico"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9h20"/><path d="M4 9v11M20 9v11"/><path d="M6 17h12"/><path d="M7 17v-3h10v3"/></svg></div>'+
+          '<div style="flex:1;min-width:0"><div class="nm">Carport</div><div class="vl">'+fmt(met("carport_t").val,1)+'<i>°C</i></div></div>'+
+          '<div class="sm" style="text-align:right">'+fmt(met("carport_h").val,1)+'&nbsp;%<br>Taupunkt '+fmt(met("carport_td").val,1)+'&nbsp;°C</div>'+
+        '</button>'+
+      '</div>';
+    sparkSVG("keller_h",el.querySelector('[data-spark="keller_h"]'),56);
+  }
+
+  /* ---------- Detailseiten ---------- */
+  var VIEWS={
+    keller:{
+      title:"Keller",sub:"KG.KE.T.1 · KNX",main:"keller_h",charts:["keller_h","keller_t"],
+      build:function(){
+        var K=keller();
+        return K.advice.replace('class="advice"','class="advice" style="margin:0 0 14px"')+
+          '<div class="rows">'+
+            row("Luftentfeuchter",K.pump.state,K.pump.since+" · erkannt am Verlauf, nicht am Stromverbrauch",
+                K.pump.pill)+
+            row("Schimmelrisiko",K.risk.text,"Oberflächenfeuchte an der kältesten Wand")+
+            row("Feuchte an der Wand",fmt(K.wand,1)+"&nbsp;%","gerechnet mit 1,5&nbsp;K unter Raumtemperatur")+
+            row("Relative Feuchte",fmt(K.h,1)+"&nbsp;%")+
+            row("Temperatur",val("keller_t"))+
+            row("Taupunkt",fmt(K.td,1)+"&nbsp;°C","berechnet aus Temperatur und Feuchte")+
+            row("Absolute Feuchte",fmt(K.ahIn,1)+"&nbsp;g/m³","berechnet")+
+            row("Absolute Feuchte außen",fmt(K.ahOut,1)+"&nbsp;g/m³","AirGradient OpenAir")+
+          '</div>'+
+          '<details class="info"><summary>Wie der Entfeuchter erkannt wird</summary><div class="body"><dl>'+
+            '<dt>Der 70-Minuten-Takt</dt>'+
+            '<dd>Ein laufender Kompressor-Entfeuchter vereist bei Kellertemperatur den Verdampfer. Das Gerät schaltet den Kompressor dann periodisch ab und taut ab — dabei steigt die gemessene Feuchte kurz um <span class="num">0,4 bis 0,9</span> Prozentpunkte an, bevor sie weiter fällt. Das ergibt das Sägezahnmuster.</dd>'+
+            '<dd>Gemessen an deinen Daten vom <span class="num">11.11.</span>: fünfzehn Zacken hintereinander, Abstände 60 bis 70 Minuten, im Mittel <span class="num">69&nbsp;Minuten</span>. Am <span class="num">9.11.</span> dasselbe Bild mit demselben Takt.</dd>'+
+            '<dt>Warum nicht die Steigung allein</dt>'+
+            '<dd>Die Abfallrate schwankt stark: am 11.11. <span class="num">−0,21</span>, am 9.11. <span class="num">−0,75</span> Prozentpunkte je Stunde. Der Takt bleibt dagegen konstant. Deshalb ist er das Hauptkriterium, die Steigung nur die Bestätigung.</dd>'+
+            '<dt>Die Regel</dt>'+
+            '<dd><b>Läuft:</b> mindestens drei Zacken von je <span class="num">0,3</span> Prozentpunkten innerhalb der letzten vier Stunden, mit einem mittleren Abstand zwischen <span class="num">40 und 100&nbsp;Minuten</span>. Zwei Zacken müssen mindestens 30 Minuten auseinanderliegen, damit ein langer Anstieg nicht doppelt gezählt wird.</dd>'+
+            '<dd><b>Steht:</b> kein solcher Takt, bei vollständigem Beobachtungsfenster. Dein Normalzustand ohne Gerät ist ein Anstieg von <span class="num">+0,14</span> Prozentpunkten je Stunde — eine Zacke von 0,3 Punkten braucht dann zwei Stunden, drei Zacken sind in vier Stunden also nicht erreichbar.</dd>'+
+            '<dd><b>Unbekannt:</b> weniger als vier Stunden lückenlose Messwerte, etwa nach einem Neustart oder einem Sensorausfall. So entsteht aus fehlenden Daten keine falsche Warnung.</dd>'+
+            '<dd><b>Warnung:</b> steht, und die relative Feuchte liegt über <span class="num">65&nbsp;%</span>.</dd>'+
+            '<dt>Gegengeprüft</dt>'+
+            '<dd>Die gebaute Logik wurde mit deinen <span class="num">98</span> Messpunkten vom 11.11. nachgespielt: durchgehend <b>läuft</b>, bei jedem Zwischenstand nach 4, 8, 12 und 16 Stunden, Takt 60 bis 70 Minuten. Mit dem Leerlauf-Anstieg von +0,14 Punkten je Stunde ergibt dieselbe Logik <b>steht</b>.</dd>'+
+            '<dt>Einschränkung</dt>'+
+            '<dd class="last">Das Gerät ist in Home Assistant nicht sichtbar — weder Schalter noch Leistungsmessung. Die Erkennung bleibt ein Rückschluss aus dem Kurvenverlauf. Eine Shelly-Messsteckdose im Keller würde daraus eine sichere Aussage machen, inklusive „Wassertank voll".</dd>'+
+          '</dl></div></details>'+
+          '<p class="exp-txt">Taupunkt und absolute Feuchte liefert der Sensor nicht, sie werden in Home Assistant aus '+
+          'Temperatur und relativer Feuchte berechnet. Der Vergleich der absoluten Werte entscheidet, ob Lüften trocknet '+
+          'oder Feuchte hereinholt — die relative Feuchte allein genügt dafür nicht.</p>';
+      }
+    },
+    carport:{
+      title:"Carport",sub:"EG.CP.S.1 · KNX",main:"carport_t",charts:["carport_t","carport_h"],
+      build:function(){
+        return '<div class="rows">'+
+            row("Abstand zum Taupunkt",fmt(cpAbstand(),1)+"&nbsp;K","unter 1&nbsp;K droht Kondensat",
+                (cpAbstand()!==null&&cpAbstand()<1)?["kritisch","--orange"]:["unkritisch","--green"])+
+            row("Temperatur",val("carport_t"))+
+            row("Relative Feuchte",val("carport_h"))+
+            row("Taupunkt",val("carport_td"),"eigener Sensorwert")+
+          '</div>'+
+          '<p class="exp-txt">Der Carport misst den Taupunkt selbst. Entscheidend ist der Abstand zwischen Lufttemperatur '+
+          'und Taupunkt: wird er klein, schlägt sich Feuchte auf kalten Flächen nieder.</p>';
+      }
+    },
+    wetter:{
+      title:"Wetter",sub:"Wetterstation Dach · KNX",main:"dach",charts:["dach","wind"],
+      build:function(){
+        return '<div class="rows">'+
+            row("Regen",regenText(),regenSeit(),regenPill())+
+            row("Windgeschwindigkeit",val("wind"),windWort())+
+            row("Temperatur Dach",val("dach"))+
+          '</div>'+
+          '<p class="exp-txt">Die Station liefert Temperatur, Windgeschwindigkeit und Regen als ja/nein. '+
+          'Niederschlagsmenge, Windrichtung und Luftdruck werden nicht gemessen. Vom Regen ist nur der '+
+          'aktuelle Zustand und der Zeitpunkt des letzten Wechsels bekannt, kein Verlauf.</p>';
+      }
+    },
+    luft:{
+      title:"Außenluft",sub:"AirGradient OpenAir",main:"pm25",charts:["pm25","pm10","pm1","voc","nox","oa_t","oa_h","co2","pm03"],
+      build:function(){
+        return '<div class="rows">'+
+            row("PM2,5",val("pm25"),"WHO-Tagesrichtwert 15&nbsp;µg/m³",pmPill(met("pm25").val,15,45))+
+            row("PM10",val("pm10"),"WHO-Tagesrichtwert 45&nbsp;µg/m³",pmPill(met("pm10").val,45,100))+
+            row("PM1",val("pm1"),"kein offizieller Grenzwert")+
+            row("PM0,3",val("pm03"),"Partikelzahl, keine Masse")+
+          '</div>'+
+          '<div class="rows">'+
+            row("VOC-Index",val("voc"),"100 = Normalzustand",pmPill(met("voc").val,150,250))+
+            row("NOₓ-Index",val("nox"),"1 = keine Belastung",pmPill(met("nox").val,20,60))+
+            row("CO₂",val("co2"),"Außenluft liegt normal bei 420 bis 450&nbsp;ppm")+
+            row("Temperatur",val("oa_t"))+
+            row("Relative Feuchte",val("oa_h"))+
+          '</div>'+
+
+          '<details class="info" open><summary>Was ist Feinstaub?</summary><div class="body"><dl>'+
+            '<dd>Feinstaub sind Teilchen, die in der Luft schweben. Die Zahl hinter PM nennt den Durchmesser in Mikrometer — ein Mikrometer ist ein Tausendstel Millimeter. Je kleiner das Teilchen, desto tiefer kommt es beim Einatmen in den Körper.</dd>'+
+            '<dt>PM10 — bis 10&nbsp;µm</dt>'+
+            '<dd>Grober Staub: Blütenpollen, Bodenstaub, Bremsen- und Reifenabrieb, Baustellen. Bleibt größtenteils in Nase und Rachen hängen. WHO-Richtwert <span class="num">45&nbsp;µg/m³</span> im Tagesmittel.</dd>'+
+            '<dt>PM2,5 — bis 2,5&nbsp;µm</dt>'+
+            '<dd>Der wichtigste Wert für die Gesundheit. Stammt fast immer aus Verbrennung: Holzheizungen, Kamine, Verkehr, Landwirtschaft. Erreicht die Lunge und von dort den Blutkreislauf. WHO-Richtwert <span class="num">15&nbsp;µg/m³</span> im Tagesmittel.</dd>'+
+            '<dt>PM1 — bis 1&nbsp;µm</dt>'+
+            '<dd>Fast ausschließlich frische Verbrennungspartikel. Dringt bis in die Lungenbläschen vor. Es gibt keinen Grenzwert, aber ein schneller Anstieg bedeutet verlässlich: hier verbrennt gerade etwas in der Nähe.</dd>'+
+            '<dt>PM0,3 — Partikelzahl</dt>'+
+            '<dd class="last">Hier zählt der Sensor Teilchen pro Deziliter Luft statt ihrer Masse. Weil winzige Partikel fast nichts wiegen, reagiert diese Zahl viel schneller auf frischen Rauch als PM2,5 — deshalb hat sie in deinem Smoke-Index das größte Gewicht.</dd>'+
+          '</dl></div></details>'+
+
+          '<details class="info"><summary>Was sind VOC und NOₓ?</summary><div class="body"><dl>'+
+            '<dt>VOC — flüchtige organische Verbindungen</dt>'+
+            '<dd>Gase, die aus Kohlenstoffverbindungen ausdünsten: Lösungsmittel, Farben, Lacke, Reinigungsmittel, Klebstoffe, aber auch Rauch, Grillen, Abgase und ganz harmlos blühende Pflanzen oder frisch gemähtes Gras.</dd>'+
+            '<dd>Der Sensor misst keine Konzentration, sondern gibt einen <b>Index von 1 bis 500</b> aus. Er lernt dabei seinen eigenen Normalzustand über die letzten Stunden und setzt ihn auf <span class="num">100</span>. Unter 100 heißt: sauberer als zuletzt üblich. Über 100: etwas ist dazugekommen. Ein Absolutwert in Milligramm ist damit nicht möglich — der Index sagt nur, ob sich etwas verändert hat.</dd>'+
+            '<dt>NOₓ — Stickoxide</dt>'+
+            '<dd>Entstehen, wenn bei hoher Temperatur verbrannt wird: Automotoren, Heizkessel, Öfen. Gleiche Indexlogik von 1 bis 500, hier bedeutet allerdings <span class="num">1</span> den Ruhezustand, also keine Belastung. Steigende Werte zeigen eine Abgasfahne in der Nähe.</dd>'+
+            '<dt>CO₂ — Kohlendioxid</dt>'+
+            '<dd class="last">Im Freien fast konstant bei <span class="num">420 bis 450&nbsp;ppm</span>, das ist der globale Hintergrund. Auffällig wird der Wert draußen nur bei stehender Inversionswetterlage oder wenn eine Abgasfahne direkt am Sensor vorbeizieht. Drinnen wäre derselbe Wert ein Lüftungsmaß — hier ist er eine Kontrolle, dass der Sensor sauber arbeitet.</dd>'+
+          '</dl></div></details>'+
+
+          '<details class="info"><summary>Brandampel und Smoke-Index</summary><div class="body"><dl>'+
+            '<dd>Beides sind keine Sensorwerte, sondern Berechnungen aus deinen Messwerten, die in Home Assistant laufen.</dd>'+
+            '<dt>Smoke-Index</dt>'+
+            '<dd>Ein gewichteter Mischwert aus PM0,3 (35&nbsp;%), PM1 (25&nbsp;%), PM2,5 (15&nbsp;%), PM10 (10&nbsp;%) und VOC (15&nbsp;%), umgerechnet auf eine Skala von 0 bis 100&nbsp;%. Er steigt, bevor einzelne Werte auffällig werden.</dd>'+
+            '<dt>Brandampel</dt>'+
+            '<dd>Gelb ab PM0,3 über <span class="num">800</span>, PM1 über <span class="num">15</span> oder PM2,5 über <span class="num">25&nbsp;µg/m³</span> — das ist Rauchbelastung oder eine stehende Inversionslage.</dd>'+
+            '<dd class="last">Rot, wenn zusätzlich der VOC-Index über <span class="num">150</span> springt und PM0,3 über <span class="num">2500</span> liegt. Diese Kombination aus vielen Kleinstpartikeln und gleichzeitig hohen VOC-Werten zeigt ein frisches Feuer in der Nähe an, nicht nur Ferntransport.</dd>'+
+          '</dl></div></details>';
+      }
+    }
+  };
+
+  /* ---------- Rendern ---------- */
+  var detail=document.getElementById("detail"),
+      vHome=document.getElementById("v-home"),
+      vDet=document.getElementById("v-detail"),
+      range="24h",current=null;
+
+  function renderDetail(name){
+    current=name;
+    var v=VIEWS[name],m=met(v.main);
+    var seg='<div class="seg" role="tablist">'+["24h","7d","30d"].map(function(r){
+      return '<button role="tab" type="button" data-range="'+r+'" aria-selected="'+(r===range)+'">'+(r==="24h"?"24 Stunden":r==="7d"?"7 Tage":"30 Tage")+'</button>'}).join("")+'</div>';
+    var html='<div class="d-h"><h1>'+v.title+'</h1><div class="sub">'+v.sub+' · <span class="stamp">'+standText()+'</span></div></div>'+
+      '<div class="d-now"><span class="n">'+fmt(m.val,m.dec)+'</span><span class="u">'+(m.unit||"Index")+'</span></div>'+seg;
+    v.charts.forEach(function(k){
+      html+='<div class="sec-h" style="padding:6px 4px 8px"><h2 style="font-size:17px">'+met(k).name+'</h2>'+
+            '<span class="meta">'+val(k)+'</span></div>'+chartSVG(k,range)});
+    html+=v.build();
+    detail.innerHTML=html;
+    detail.querySelectorAll("[data-range]").forEach(function(b){
+      b.addEventListener("click",function(){range=b.dataset.range;renderDetail(name);window.scrollTo(0,0)})});
+  }
+
+  function route(){
+    var h=(location.hash||"").replace("#","");
+    if(VIEWS[h]){vHome.hidden=true;vDet.hidden=false;renderDetail(h)}
+    else{vDet.hidden=true;vHome.hidden=false;current=null}
+  }
+
+  document.addEventListener("click",function(e){
+    var t=e.target.closest("[data-go]");if(!t)return;
+    location.hash=t.dataset.go==="home"?"":"#"+t.dataset.go;
+    window.scrollTo(0,0);
+  });
+  window.addEventListener("hashchange",route);
+
+  /* ---------- Laden und zeichnen ---------- */
+  function zeichne(){
+    kopf();
+    renderHaus();
+    renderWetter();
+    renderLuft();
+    if(current)renderDetail(current);
+  }
+
+  function laden(){
+    return fetch(QUELLE,{cache:"no-store"})
+      .then(function(r){
+        if(!r.ok)throw new Error("HTTP "+r.status);
+        return r.json();
+      })
+      .then(function(j){D=j;fehler=null})
+      .catch(function(e){fehler=(e&&e.message)||"Verbindungsfehler"})
+      .then(zeichne);
+  }
+
+  route();
+  zeichne();
+  laden();
+  setInterval(laden,TAKT*1000);
+  document.addEventListener("visibilitychange",function(){
+    if(!document.hidden)laden();
+  });
+})();
+</script>
+</body>
+</html>
