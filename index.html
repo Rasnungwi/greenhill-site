@@ -287,9 +287,17 @@ button{font-family:inherit;font-size:inherit;color:inherit}
 
   /* Verlaufsdaten liefert die Datei noch nicht. Sobald unter "verlauf" Reihen
      stehen, zeichnen Sparklines und Diagramme von selbst. */
+  /* Eine Reihe taugt erst zum Zeichnen, wenn mindestens zwei Zeitfenster
+     belegt sind. Fehlende Fenster stehen als null in der Datei. */
   function series(key,range){
     var v=tief(["verlauf",key,range]);
-    return (v&&v.length>1)?v:null;
+    if(!v||!v.length)return null;
+    var echte=0;
+    for(var i=0;i<v.length;i++)if(zahl(v[i])!==null)echte++;
+    return echte>1?v:null;
+  }
+  function zahl(v){
+    return (v===null||v===undefined||typeof v!=="number"||isNaN(v))?null:v;
   }
 
   function fmt(v,dec){
@@ -351,14 +359,43 @@ button{font-family:inherit;font-size:inherit;color:inherit}
     return["gut","--green"];
   }
 
+  /* Zeichnet die Reihe als eine oder mehrere Teilkurven. Wo Zeitfenster
+     fehlen, bricht die Linie ab und setzt danach neu an — statt eine
+     Gerade über das Loch zu ziehen, die es so nie gegeben hat. */
   function path(vals,w,h,pad){
-    var lo=Math.min.apply(null,vals),hi=Math.max.apply(null,vals),sp=hi-lo||1;
+    var echte=[],i;
+    for(i=0;i<vals.length;i++)if(zahl(vals[i])!==null)echte.push(vals[i]);
+    var lo=Math.min.apply(null,echte),hi=Math.max.apply(null,echte),sp=hi-lo||1;
     lo-=sp*.18;hi+=sp*.18;sp=hi-lo;
-    var pts=vals.map(function(v,i){return[pad+i/(vals.length-1)*(w-pad*2),h-pad-(v-lo)/sp*(h-pad*2)]});
-    var d="M"+pts[0][0].toFixed(1)+" "+pts[0][1].toFixed(1);
-    for(var i=1;i<pts.length;i++){var p0=pts[i-1],p1=pts[i],cx=(p0[0]+p1[0])/2;
-      d+="C"+cx.toFixed(1)+" "+p0[1].toFixed(1)+","+cx.toFixed(1)+" "+p1[1].toFixed(1)+","+p1[0].toFixed(1)+" "+p1[1].toFixed(1)}
-    return{d:d,pts:pts};
+
+    var n=vals.length,xy=[];
+    for(i=0;i<n;i++){
+      var v=zahl(vals[i]);
+      xy.push(v===null?null:[pad+(n<2?0:i/(n-1))*(w-pad*2),h-pad-(v-lo)/sp*(h-pad*2)]);
+    }
+
+    var d="",fuell="",stueck=[],alle=[];
+    function ablegen(){
+      if(stueck.length>1){
+        var s="M"+stueck[0][0].toFixed(1)+" "+stueck[0][1].toFixed(1),k,p0,p1,cx;
+        for(k=1;k<stueck.length;k++){
+          p0=stueck[k-1];p1=stueck[k];cx=(p0[0]+p1[0])/2;
+          s+="C"+cx.toFixed(1)+" "+p0[1].toFixed(1)+","+cx.toFixed(1)+" "+p1[1].toFixed(1)+
+             ","+p1[0].toFixed(1)+" "+p1[1].toFixed(1);
+        }
+        d+=s;
+        fuell+=s+"L"+stueck[stueck.length-1][0].toFixed(1)+" "+(h-pad).toFixed(1)+
+               "L"+stueck[0][0].toFixed(1)+" "+(h-pad).toFixed(1)+"Z";
+      }
+      stueck=[];
+    }
+    for(i=0;i<xy.length;i++){
+      if(xy[i]){stueck.push(xy[i]);alle.push(xy[i])}
+      else ablegen();
+    }
+    ablegen();
+
+    return {d:d,fuell:fuell,pts:alle,werte:echte,luecken:n-echte.length,fenster:n};
   }
 
   function sparkSVG(key,el,h){
@@ -372,7 +409,7 @@ button{font-family:inherit;font-size:inherit;color:inherit}
     el.setAttribute("preserveAspectRatio","none");
     el.innerHTML='<defs><linearGradient id="'+id+'" x1="0" y1="0" x2="0" y2="1">'+
       '<stop offset="0" stop-color="'+c+'" stop-opacity=".32"/><stop offset="1" stop-color="'+c+'" stop-opacity="0"/></linearGradient></defs>'+
-      '<path d="'+g.d+' L'+w+' '+h+' L0 '+h+' Z" fill="url(#'+id+')"/>'+
+      '<path d="'+g.fuell+'" fill="url(#'+id+')"/>'+
       '<path d="'+g.d+'" fill="none" stroke="'+c+'" stroke-width="2" stroke-linecap="round" vector-effect="non-scaling-stroke"/>';
   }
 
@@ -380,16 +417,17 @@ button{font-family:inherit;font-size:inherit;color:inherit}
     var m=met(key),vals=series(key,range);
     if(!vals)return '<div class="card"><p class="exp-txt" style="margin:0">Für diesen Zeitraum liegen noch keine Verlaufsdaten vor. Home Assistant schreibt bisher nur den aktuellen Messwert heraus; die Reihen für 24 Stunden, 7 und 30 Tage folgen aus den Langzeitstatistiken.</p></div>';
     var w=640,h=190,pad=14,g=path(vals,w,h,pad),c="var("+m.color+")";
-    var lo=Math.min.apply(null,vals),hi=Math.max.apply(null,vals);
-    var avg=vals.reduce(function(a,b){return a+b},0)/vals.length,grid="",k,y;
+    var lo=Math.min.apply(null,g.werte),hi=Math.max.apply(null,g.werte);
+    var avg=g.werte.reduce(function(a,b){return a+b},0)/g.werte.length,grid="",k,y;
     for(k=0;k<=3;k++){y=pad+(h-pad*2)*k/3;grid+='<line x1="'+pad+'" y1="'+y.toFixed(1)+'" x2="'+(w-pad)+'" y2="'+y.toFixed(1)+'" stroke="var(--sep)" stroke-width="1" vector-effect="non-scaling-stroke"/>'}
     var last=g.pts[g.pts.length-1],id="cg-"+key+"-"+range;
     var lab=RBEZ[range]||["",""];
-    var note="";
+    var note=g.luecken?'<div class="xax" style="padding:2px 6px 0"><span style="color:var(--label-3)">'+
+      g.luecken+' von '+g.fenster+' Zeitfenstern fehlen in den Statistikdaten</span></div>':"";
     return '<div class="card pad0"><svg class="chart" viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="none" role="img" aria-label="'+m.name+' '+range+'">'+
       '<defs><linearGradient id="'+id+'" x1="0" y1="0" x2="0" y2="1">'+
       '<stop offset="0" stop-color="'+c+'" stop-opacity=".30"/><stop offset="1" stop-color="'+c+'" stop-opacity="0"/></linearGradient></defs>'+
-      grid+'<path d="'+g.d+' L'+(w-pad)+' '+(h-pad)+' L'+pad+' '+(h-pad)+' Z" fill="url(#'+id+')"/>'+
+      grid+'<path d="'+g.fuell+'" fill="url(#'+id+')"/>'+
       '<path d="'+g.d+'" fill="none" stroke="'+c+'" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>'+
       '<circle cx="'+last[0].toFixed(1)+'" cy="'+last[1].toFixed(1)+'" r="4" fill="'+c+'"/></svg>'+
       '<div class="xax"><span>'+lab[0]+'</span><span>'+lab[1]+'</span></div>'+note+
