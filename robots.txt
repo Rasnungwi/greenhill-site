@@ -1,0 +1,3 @@
+# Greenhill ist oeffentlich erreichbar, soll aber nicht in Suchmaschinen landen.
+User-agent: *
+Disallow: /
