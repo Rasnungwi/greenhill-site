@@ -103,6 +103,9 @@ button,input{font-family:inherit;font-size:inherit;color:inherit}
 .flow .fval{font-size:13px;font-weight:600;fill:var(--label);font-variant-numeric:tabular-nums}
 .flow .fval.aus{fill:var(--label-3)}
 
+.fuss{font-size:12px;line-height:1.45;color:var(--label-2);padding:0 6px;margin:-6px 0 0}
+.fuss p{margin:0 0 5px}
+.fuss sup,.kpi sup{font-size:.7em;margin-left:1px}
 .kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .kpi{background:var(--card);border-radius:20px;box-shadow:var(--shadow);padding:13px 14px}
 .kpi .k{font-size:13px;font-weight:600;color:var(--label-2);display:flex;align-items:center;gap:6px}
@@ -192,6 +195,7 @@ button,input{font-family:inherit;font-size:inherit;color:inherit}
     <section class="sec" style="margin-top:14px">
       <div class="sec-h"><h2>Jetzt</h2><span class="meta">Fronius, alle 5 Minuten</span></div>
       <div class="card flow" id="flow"></div>
+      <div class="fuss" id="flow-fuss"></div>
     </section>
 
     <section class="sec">
@@ -465,8 +469,8 @@ button,input{font-family:inherit;font-size:inherit;color:inherit}
       linie("M228 192 L112 192",bezug,"var(--c-bezug)")+
       fv(96,112,pvHaus)+fv(244,112,einsp)+fv(170,184,bezug)+
       knoten(170,48,"var(--c-pv)",sonne,"Erzeugung",kw(l.pv))+
-      knoten(62,192,"var(--c-direkt)",haus,"Allgemeinstrom",kw(l.last))+
-      knoten(278,192,"var(--c-bezug)",mast,netz>=0?"Bezug aus Netz":"Einspeisung",kw(Math.abs(netz)))+
+      knoten(62,192,"var(--c-direkt)",haus,"Allgemeinstrom ¹",kw(l.last))+
+      knoten(278,192,"var(--c-bezug)",mast,netz>=0?"Bezug aus Netz":"Anteil für Tops ²",kw(Math.abs(netz)))+
       '</svg>';
   }
 
@@ -492,9 +496,9 @@ button,input{font-family:inherit;font-size:inherit;color:inherit}
     var kwp=V&&V.anlage&&V.anlage.kwp;
     $("kpis").innerHTML=
       k("var(--c-pv)","Erzeugung",x.pv,kwp?nf(x.pv/kwp,2)+" kWh/kWp":"")+
-      k(null,"Verbrauch Allgemein",x.verbr,"")+
+      k(null,"Verbrauch Allgemein<sup>1</sup>",x.verbr,"")+
       k("var(--c-direkt)","Direktverbrauch",x.direkt,"Eigenverbrauch "+pct(x.pv?x.direkt/x.pv:null))+
-      k("var(--c-pv)","Einspeisung",x.einsp,"")+
+      k("var(--c-pv)","Anteil für Tops<sup>2</sup>",x.einsp,"eingespeist")+
       k("var(--c-bezug)","Bezug",x.bezug,"Autarkie "+pct(x.verbr?x.direkt/x.verbr:null))+
       // Statischer EDA-Schluessel: Top 1, 2, 3 und Allgemein je 25 % der Einspeisung (nicht der Erzeugung -
       // den Direktverbrauch nimmt der Allgemeinstrom vorher selbst). Zugeteilt wird nur, was das Top
@@ -630,7 +634,7 @@ button,input{font-family:inherit;font-size:inherit;color:inherit}
     var jede=Math.max(1,Math.ceil(n/8)),lab="";
     werte.forEach(function(w,i){if(i%jede===0||n<=12)lab+='<span style="flex:1;text-align:center">'+w.b.lab+'</span>';else lab+='<span style="flex:1"></span>'});
     box.innerHTML=s+'<div class="xax" style="padding-left:'+(PL/W*100)+'%;padding-right:'+(PR/W*100)+'%">'+lab+'</div>';
-    legende([{f:"var(--c-direkt)",t:"Direktverbrauch"},{f:"var(--c-pv)",t:"Einspeisung"},{f:"var(--c-bezug)",t:"Bezug"}]);
+    legende([{f:"var(--c-direkt)",t:"Direktverbrauch"},{f:"var(--c-pv)",t:"Anteil für Tops (Einspeisung)"},{f:"var(--c-bezug)",t:"Bezug"}]);
     var el=box.querySelector("svg"),hl=el.querySelector(".hl");
     function zeig(ev){
       var r=el.getBoundingClientRect(),x=(ev.clientX-r.left)/r.width*W,i=Math.floor((x-PL)/slot);
@@ -639,7 +643,7 @@ button,input{font-family:inherit;font-size:inherit;color:inherit}
       tipAn(box,PL+i*slot+slot/2,'<b>'+w.b.lang+'</b>'+
         (w.pv==null?'<div>keine Messwerte</div>':
         tr("var(--c-pv)","Erzeugung",kwh(w.pv))+tr("var(--c-direkt)","Direktverbrauch",kwh(w.direkt))+
-        tr("var(--c-pv)","Einspeisung",kwh(w.einsp))+tr("var(--c-bezug)","Bezug",kwh(w.bezug))+
+        tr("var(--c-pv)","Anteil für Tops",kwh(w.einsp))+tr("var(--c-bezug)","Bezug",kwh(w.bezug))+
         (ertrag(w)!=null?'<div class="r">Ertrag <b>'+eurS(ertrag(w))+(w.wertVorl?"*":"")+'</b></div>':'')+
         (w.unvoll?'<div style="color:var(--label-2)">'+w.unvoll+' Tag'+(w.unvoll>1?'e':'')+' unvollständig</div>':'')));
     }
@@ -670,7 +674,7 @@ button,input{font-family:inherit;font-size:inherit;color:inherit}
       row("var(--c-pv)","Erzeugung",kwh(s.pv),kwp&&s.pv!=null?nf(s.pv/kwp,P.art==="tag"?2:0)+" kWh pro kWp":"")+
       row(null,"Verbrauch Allgemeinstrom",kwh(s.verbr))+
       row("var(--c-direkt)","Direktverbrauch",kwh(s.direkt))+
-      row("var(--c-pv)","Einspeisung",kwh(s.einsp))+
+      row("var(--c-pv)","Anteil für Tops",kwh(s.einsp),"eingespeist; je 25 % für Top 1–3 und Allgemein, Ungenutztes an die OeMAG")+
       row("var(--c-bezug)","Bezug aus dem Netz",kwh(s.bezug))+
       row(null,"Eigenverbrauchsquote",pct(eig),"Anteil der Erzeugung, der direkt verbraucht wurde")+
       row(null,"Autarkie",pct(aut),"Anteil des Allgemeinstroms, der aus der Anlage kam");
@@ -741,6 +745,12 @@ button,input{font-family:inherit;font-size:inherit;color:inherit}
     if(!P.ref) P.ref=heute();
     kopf();
     $("flow").innerHTML=flussSVG();
+    // Fussnoten zum Energiefluss und zu Heute; OeMAG-Tarif des laufenden Monats (oder vorlaeufig der letzte bekannte)
+    var op=oemagPreis(iso(heute()));
+    $("flow-fuss").innerHTML=
+      '<p><sup>1</sup> Allgemeinstrom = Wärmepumpe, Licht und alles andere am Allgemeinzähler. Er nimmt sich den PV-Strom zuerst, noch vor dem Zähler.</p>'+
+      '<p><sup>2</sup> Anteil für Tops = was ins Netz eingespeist wird. Davon stehen Top 1, 2, 3 und dem Allgemeinstrom je 25 % zu. Was die Tops davon tatsächlich verbrauchen, sehen wir hier nicht. Was jemand von seinen 25 % nicht verbraucht, geht als Einspeisung an die OeMAG'+
+      (op?' zum Marktpreis von '+nf(op.p,2)+' ct/kWh ('+(op.vorl?'vorläufig, Stand '+monatName(op.von):monatName(iso(heute()).slice(0,7)))+')':' zum Marktpreis')+'.</p>';
     kpis();verlauf();ertragJahre();anlage();
   }
   function aktualisieren(){
