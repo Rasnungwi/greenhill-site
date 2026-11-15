@@ -499,7 +499,7 @@ button,input{font-family:inherit;font-size:inherit;color:inherit}
       k("var(--c-pv)","Erzeugung",x.pv,kwp?nf(x.pv/kwp,2)+" kWh/kWp":"")+
       k(null,"Verbrauch Allgemein<sup>1</sup>",x.verbr,"")+
       k("var(--c-direkt)","Direktverbrauch",x.direkt,"Eigenverbrauch "+pct(x.pv?x.direkt/x.pv:null))+
-      k("var(--c-pv)","Anteil für Tops<sup>2</sup>",x.einsp,"")+
+      k("var(--c-pv)","Anteil für Tops<sup>2</sup>",x.einsp,"an die Energiegemeinschaft übergeben")+
       k("var(--c-bezug)","Bezug<sup>3</sup>",x.bezug,"Autarkie "+pct(x.verbr?x.direkt/x.verbr:null))+
       // Statischer EDA-Schluessel: Top 1, 2, 3 und Allgemein je 25 % der Einspeisung (nicht der Erzeugung -
       // den Direktverbrauch nimmt der Allgemeinstrom vorher selbst). Zugeteilt wird nur, was das Top
