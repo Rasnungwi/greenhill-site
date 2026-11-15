@@ -752,7 +752,7 @@ button,input{font-family:inherit;font-size:inherit;color:inherit}
       '<p><sup>1</sup> Allgemeinstrom = Wärmepumpe, Licht und alles andere am Allgemeinzähler. Er nimmt sich den PV-Strom zuerst, noch vor dem Zähler.</p>'+
       '<p><sup>2</sup> Anteil für Tops = was ins Netz eingespeist wird. Davon stehen Top 1, 2, 3 und dem Allgemeinstrom je 25 % zu. Was die Tops davon tatsächlich verbrauchen, sehen wir hier nicht. Was jemand von seinen 25 % nicht verbraucht, geht als Einspeisung an die OeMAG'+
       (op?' zum Marktpreis von '+nf(op.p,2)+' ct/kWh ('+(op.vorl?'vorläufig, Stand '+monatName(op.von):monatName(iso(heute()).slice(0,7)))+')':' zum Marktpreis')+'.</p>'+
-      '<p><sup>3</sup> Bezug aus Netz = reicht die PV nicht für den Allgemeinstrom (Wolken, abends, nachts), kommt der Rest aus dem Netz. Der rechte Kreis im Energiefluss zeigt deshalb je nach Richtung „Anteil für Tops“ oder „Bezug aus Netz“.</p>';
+      '<p><sup>3</sup> Bezug aus Netz = reicht die PV nicht für den Allgemeinstrom (Wolken, abends, nachts), kommt der Rest aus dem Netz'+(bezugPreis(iso(heute()))!=null?' – gerechnet mit '+nf(bezugPreis(iso(heute())),bezugPreis(iso(heute()))%1?2:0)+' ct/kWh (heutiger Bezugspreis; damit wird auch die Ersparnis geschätzt)':'')+'. Der rechte Kreis im Energiefluss zeigt deshalb je nach Richtung „Anteil für Tops“ oder „Bezug aus Netz“.</p>';
     kpis();verlauf();ertragJahre();anlage();
   }
   function aktualisieren(){
