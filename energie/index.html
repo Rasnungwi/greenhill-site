@@ -499,7 +499,7 @@ button,input{font-family:inherit;font-size:inherit;color:inherit}
       k("var(--c-pv)","Erzeugung",x.pv,kwp?nf(x.pv/kwp,2)+" kWh/kWp":"")+
       k(null,"Verbrauch Allgemein<sup>1</sup>",x.verbr,"")+
       k("var(--c-direkt)","Direktverbrauch",x.direkt,"Eigenverbrauch "+pct(x.pv?x.direkt/x.pv:null))+
-      k("var(--c-pv)","Anteil für Tops<sup>2</sup>",x.einsp,"aufgeteilt")+
+      k("var(--c-pv)","Anteil für Tops<sup>2</sup>",x.einsp,"")+
       k("var(--c-bezug)","Bezug<sup>3</sup>",x.bezug,"Autarkie "+pct(x.verbr?x.direkt/x.verbr:null))+
       // Statischer EDA-Schluessel: Top 1, 2, 3 und Allgemein je 25 % der Einspeisung (nicht der Erzeugung -
       // den Direktverbrauch nimmt der Allgemeinstrom vorher selbst). Zugeteilt wird nur, was das Top
@@ -635,7 +635,7 @@ button,input{font-family:inherit;font-size:inherit;color:inherit}
     var jede=Math.max(1,Math.ceil(n/8)),lab="";
     werte.forEach(function(w,i){if(i%jede===0||n<=12)lab+='<span style="flex:1;text-align:center">'+w.b.lab+'</span>';else lab+='<span style="flex:1"></span>'});
     box.innerHTML=s+'<div class="xax" style="padding-left:'+(PL/W*100)+'%;padding-right:'+(PR/W*100)+'%">'+lab+'</div>';
-    legende([{f:"var(--c-direkt)",t:"Direktverbrauch"},{f:"var(--c-pv)",t:"Anteil für Tops (Einspeisung)"},{f:"var(--c-bezug)",t:"Bezug"}]);
+    legende([{f:"var(--c-direkt)",t:"Direktverbrauch"},{f:"var(--c-pv)",t:"Anteil für Tops"},{f:"var(--c-bezug)",t:"Bezug"}]);
     var el=box.querySelector("svg"),hl=el.querySelector(".hl");
     function zeig(ev){
       var r=el.getBoundingClientRect(),x=(ev.clientX-r.left)/r.width*W,i=Math.floor((x-PL)/slot);
@@ -675,7 +675,7 @@ button,input{font-family:inherit;font-size:inherit;color:inherit}
       row("var(--c-pv)","Erzeugung",kwh(s.pv),kwp&&s.pv!=null?nf(s.pv/kwp,P.art==="tag"?2:0)+" kWh pro kWp":"")+
       row(null,"Verbrauch Allgemeinstrom",kwh(s.verbr))+
       row("var(--c-direkt)","Direktverbrauch",kwh(s.direkt))+
-      row("var(--c-pv)","Anteil für Tops",kwh(s.einsp),"aufgeteilt: je 25 % für Top 1–3 und Allgemein, Ungenutztes an die OeMAG")+
+      row("var(--c-pv)","Anteil für Tops",kwh(s.einsp),"je 25 % für Top 1–3 und Allgemein, Ungenutztes an die OeMAG")+
       row("var(--c-bezug)","Bezug aus dem Netz",kwh(s.bezug))+
       row(null,"Eigenverbrauchsquote",pct(eig),"Anteil der Erzeugung, der direkt verbraucht wurde")+
       row(null,"Autarkie",pct(aut),"Anteil des Allgemeinstroms, der aus der Anlage kam");
