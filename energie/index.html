@@ -103,7 +103,7 @@ button,input{font-family:inherit;font-size:inherit;color:inherit}
 .flow .fval{font-size:13px;font-weight:600;fill:var(--label);font-variant-numeric:tabular-nums}
 .flow .fval.aus{fill:var(--label-3)}
 
-.fuss{font-size:12px;line-height:1.45;color:var(--label-2);padding:0 6px;margin:-6px 0 0}
+.fuss{font-size:12px;line-height:1.45;color:var(--label-2);padding:0 6px;margin:22px 0 0}
 .fuss p{margin:0 0 5px}
 .fuss sup,.kpi sup{font-size:.7em;margin-left:1px}
 .kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
@@ -195,7 +195,6 @@ button,input{font-family:inherit;font-size:inherit;color:inherit}
     <section class="sec" style="margin-top:14px">
       <div class="sec-h"><h2>Jetzt</h2><span class="meta">Fronius, alle 5 Minuten</span></div>
       <div class="card flow" id="flow"></div>
-      <div class="fuss" id="flow-fuss"></div>
     </section>
 
     <section class="sec">
@@ -247,6 +246,8 @@ button,input{font-family:inherit;font-size:inherit;color:inherit}
         <p><b>Lücken:</b> Für Zeiten, in denen Home Assistant keine Statistik hat, zeigt die Seite nichts an, statt etwas zu schätzen.</p>
       </div>
     </details>
+
+    <div class="fuss" id="flow-fuss"></div>
 
     <div class="foot">
       <span id="quelle">Quelle: Fronius über Home Assistant</span>
@@ -470,7 +471,7 @@ button,input{font-family:inherit;font-size:inherit;color:inherit}
       fv(96,112,pvHaus)+fv(244,112,einsp)+fv(170,184,bezug)+
       knoten(170,48,"var(--c-pv)",sonne,"Erzeugung",kw(l.pv))+
       knoten(62,192,"var(--c-direkt)",haus,"Allgemeinstrom ¹",kw(l.last))+
-      knoten(278,192,"var(--c-bezug)",mast,netz>=0?"Bezug aus Netz":"Anteil für Tops ²",kw(Math.abs(netz)))+
+      knoten(278,192,"var(--c-bezug)",mast,netz>=0?"Bezug aus Netz ³":"Anteil für Tops ²",kw(Math.abs(netz)))+
       '</svg>';
   }
 
@@ -499,7 +500,7 @@ button,input{font-family:inherit;font-size:inherit;color:inherit}
       k(null,"Verbrauch Allgemein<sup>1</sup>",x.verbr,"")+
       k("var(--c-direkt)","Direktverbrauch",x.direkt,"Eigenverbrauch "+pct(x.pv?x.direkt/x.pv:null))+
       k("var(--c-pv)","Anteil für Tops<sup>2</sup>",x.einsp,"eingespeist")+
-      k("var(--c-bezug)","Bezug",x.bezug,"Autarkie "+pct(x.verbr?x.direkt/x.verbr:null))+
+      k("var(--c-bezug)","Bezug<sup>3</sup>",x.bezug,"Autarkie "+pct(x.verbr?x.direkt/x.verbr:null))+
       // Statischer EDA-Schluessel: Top 1, 2, 3 und Allgemein je 25 % der Einspeisung (nicht der Erzeugung -
       // den Direktverbrauch nimmt der Allgemeinstrom vorher selbst). Zugeteilt wird nur, was das Top
       // in der jeweiligen Viertelstunde braucht; der Wert ist deshalb die Obergrenze.
@@ -750,7 +751,8 @@ button,input{font-family:inherit;font-size:inherit;color:inherit}
     $("flow-fuss").innerHTML=
       '<p><sup>1</sup> Allgemeinstrom = Wärmepumpe, Licht und alles andere am Allgemeinzähler. Er nimmt sich den PV-Strom zuerst, noch vor dem Zähler.</p>'+
       '<p><sup>2</sup> Anteil für Tops = was ins Netz eingespeist wird. Davon stehen Top 1, 2, 3 und dem Allgemeinstrom je 25 % zu. Was die Tops davon tatsächlich verbrauchen, sehen wir hier nicht. Was jemand von seinen 25 % nicht verbraucht, geht als Einspeisung an die OeMAG'+
-      (op?' zum Marktpreis von '+nf(op.p,2)+' ct/kWh ('+(op.vorl?'vorläufig, Stand '+monatName(op.von):monatName(iso(heute()).slice(0,7)))+')':' zum Marktpreis')+'.</p>';
+      (op?' zum Marktpreis von '+nf(op.p,2)+' ct/kWh ('+(op.vorl?'vorläufig, Stand '+monatName(op.von):monatName(iso(heute()).slice(0,7)))+')':' zum Marktpreis')+'.</p>'+
+      '<p><sup>3</sup> Bezug aus Netz = reicht die PV nicht für den Allgemeinstrom (Wolken, abends, nachts), kommt der Rest aus dem Netz. Der rechte Kreis im Energiefluss zeigt deshalb je nach Richtung „Anteil für Tops“ oder „Bezug aus Netz“.</p>';
     kpis();verlauf();ertragJahre();anlage();
   }
   function aktualisieren(){
