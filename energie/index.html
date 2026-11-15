@@ -222,7 +222,7 @@ button,input{font-family:inherit;font-size:inherit;color:inherit}
     </section>
 
     <section class="sec">
-      <div class="sec-h"><h2>Ertrag</h2><span class="meta">Ersparnis + Einspeisung</span></div>
+      <div class="sec-h"><h2>Ertrag</h2><span class="meta">Ersparnis geschätzt</span></div>
       <div class="rows" id="ertrag"></div>
       <div class="note" id="ertrag-hinweis" style="margin:-4px 0 0"></div>
     </section>
@@ -472,11 +472,14 @@ button,input{font-family:inherit;font-size:inherit;color:inherit}
 
   /* ---------------- Euro ---------------- */
   // Ertrag = Ersparnis (Direktverbrauch x Bezugspreis) + Wert der Einspeisung (x OeMAG-Preis)
+  // Ersparnis ist eine grobe Schaetzung: einheitlicher Bezugspreis ruecklaeufig ab 2024,
+  // obwohl bis Fruehjahr 2026 jedes Top und der Allgemeinstrom einen eigenen Lieferanten hatten.
+  function eurS(v){return v==null?"–":"≈ "+eur(v)}
   function ertrag(s){return (s.erspOk&&s.wertOk&&s.mitDaten)?s.ersp+s.wert:null}
   function ertragKachel(s){
     var e=ertrag(s);
-    return '<div class="kpi"><div class="k">Ertrag</div><div class="v">'+(e==null?"–":nf(e,2))+'<i>€</i></div>'+
-      '<div class="s">'+(e==null?"Tarife fehlen":eur(s.ersp)+" gespart · "+eur(s.wert)+" Einsp."+(s.wertVorl?"*":""))+'</div></div>';
+    return '<div class="kpi"><div class="k">Ertrag</div><div class="v">'+(e==null?"–":"≈ "+nf(e,2))+'<i>€</i></div>'+
+      '<div class="s">'+(e==null?"Tarife fehlen":eurS(s.ersp)+" gespart · "+eur(s.wert)+" Einsp."+(s.wertVorl?"*":""))+'</div></div>';
   }
   function vorlText(s){return s.wertVorl?"* OeMAG-Preis für diesen Monat noch nicht veröffentlicht, vorläufig mit "+monatName(s.wertVorl)+" gerechnet.":""}
 
@@ -633,7 +636,7 @@ button,input{font-family:inherit;font-size:inherit;color:inherit}
         (w.pv==null?'<div>keine Messwerte</div>':
         tr("var(--c-pv)","Erzeugung",kwh(w.pv))+tr("var(--c-direkt)","Direktverbrauch",kwh(w.direkt))+
         tr("var(--c-pv)","Einspeisung",kwh(w.einsp))+tr("var(--c-bezug)","Bezug",kwh(w.bezug))+
-        (ertrag(w)!=null?'<div class="r">Ertrag <b>'+eur(ertrag(w))+(w.wertVorl?"*":"")+'</b></div>':'')+
+        (ertrag(w)!=null?'<div class="r">Ertrag <b>'+eurS(ertrag(w))+(w.wertVorl?"*":"")+'</b></div>':'')+
         (w.unvoll?'<div style="color:var(--label-2)">'+w.unvoll+' Tag'+(w.unvoll>1?'e':'')+' unvollständig</div>':'')));
     }
     el.addEventListener("pointermove",zeig);el.addEventListener("pointerdown",zeig);
@@ -669,9 +672,9 @@ button,input{font-family:inherit;font-size:inherit;color:inherit}
       row(null,"Autarkie",pct(aut),"Anteil des Allgemeinstroms, der aus der Anlage kam");
     var tarifeDa=V&&V.tarife&&((V.tarife.bezug||[]).length||Object.keys(V.tarife.oemag||{}).length);
     if(s.mitDaten){
-      html+=row(null,"Ersparnis Allgemeinstrom",s.erspOk?eur(s.ersp):"–",s.erspOk?"Direktverbrauch × Bezugspreis":(tarifeDa?"Bezugspreis fehlt für diesen Zeitraum":"Bezugspreis noch nicht hinterlegt"),!s.erspOk)+
+      html+=row(null,"Ersparnis Allgemeinstrom",s.erspOk?eurS(s.ersp):"–",s.erspOk?"grobe Schätzung: Direktverbrauch × heutiger Bezugspreis":(tarifeDa?"Bezugspreis fehlt für diesen Zeitraum":"Bezugspreis noch nicht hinterlegt"),!s.erspOk)+
             row(null,"Wert der Einspeisung",s.wertOk?eur(s.wert)+(s.wertVorl?"*":""):"–",s.wertOk?"Einspeisung × OeMAG-Marktpreis; ein Teil geht gratis an die Tops":(tarifeDa?"OeMAG-Preis fehlt für diesen Zeitraum":"OeMAG-Preise noch nicht hinterlegt"),!s.wertOk)+
-            '<div class="row"><div class="k"><div><b>Ertrag der Anlage</b><small>'+(ertrag(s)==null?"unvollständig – Tarife fehlen":"Ersparnis + Wert der Einspeisung"+(s.wertVorl?"<br>"+vorlText(s):""))+'</small></div></div><div class="v" style="font-size:19px">'+(ertrag(s)==null?"–":eur(ertrag(s)))+'</div></div>';
+            '<div class="row"><div class="k"><div><b>Ertrag der Anlage</b><small>'+(ertrag(s)==null?"unvollständig – Tarife fehlen":"geschätzte Ersparnis + Wert der Einspeisung"+(s.wertVorl?"<br>"+vorlText(s):""))+'</small></div></div><div class="v" style="font-size:19px">'+(ertrag(s)==null?"–":eurS(ertrag(s)))+'</div></div>';
     }
     if(quelle) html+=row(null,"Kurve",quelle,"",true);
     $("summe").innerHTML=html;
@@ -702,13 +705,13 @@ button,input{font-family:inherit;font-size:inherit;color:inherit}
       if(s.wertVorl) vorl=s;
       if(e==null) ges.ok=false; else {ges.e+=e;ges.s+=s.ersp;ges.w+=s.wert}
       var teil=(y===a.getFullYear()&&a.getMonth()>0?"ab "+a.getDate()+"."+(a.getMonth()+1)+". · ":"")+(y===h.getFullYear()?"bis heute · ":"");
-      html+=row(String(y),e==null?"–":eur(e)+(s.wertVorl?"*":""),
-        teil+(e==null?"Tarife fehlen":eur(s.ersp)+" gespart ("+kwh(s.direkt)+" direkt) · "+eur(s.wert)+" Einspeisung ("+kwh(s.einsp)+")")+
+      html+=row(String(y),e==null?"–":eurS(e)+(s.wertVorl?"*":""),
+        teil+(e==null?"Tarife fehlen":eurS(s.ersp)+" gespart ("+kwh(s.direkt)+" direkt) · "+eur(s.wert)+" Einspeisung ("+kwh(s.einsp)+")")+
         (s.mitDaten<s.tage?" · "+(s.tage-s.mitDaten)+" Tage ohne Daten":""));
     }
-    html=row("Seit "+MONATE[a.getMonth()]+" "+a.getFullYear(),ges.ok?eur(ges.e):"–",ges.ok?eur(ges.s)+" gespart · "+eur(ges.w)+" Einspeisung":"",true)+html;
+    html=row("Seit "+MONATE[a.getMonth()]+" "+a.getFullYear(),ges.ok?eurS(ges.e):"–",ges.ok?eurS(ges.s)+" gespart · "+eur(ges.w)+" Einspeisung":"",true)+html;
     $("ertrag").innerHTML=html;
-    var hinweise=["Ersparnis = Direktverbrauch × Bezugspreis ("+(bezugPreis(iso(h))!=null?nf(bezugPreis(iso(h)),1)+" ct/kWh":"fehlt")+"). Einspeisung = eingespeiste kWh × OeMAG-Monatspreis; ein Teil davon geht über die Energiegemeinschaft gratis an die Tops – die Aufteilung folgt."];
+    var hinweise=["<b>Ersparnis ist eine grobe Schätzung</b> (≈): Direktverbrauch × "+(bezugPreis(iso(h))!=null?nf(bezugPreis(iso(h)),1)+" ct/kWh":"Bezugspreis fehlt")+", dem heutigen Preis. Erst seit Frühjahr 2026 beziehen alle Tops und der Allgemeinstrom bei unserer Wasserkraft; vorher hatte jeder einen eigenen Lieferanten, die damaligen Preise kennen wir nicht. Einspeisung = eingespeiste kWh × OeMAG-Monatspreis; ein Teil davon geht über die Energiegemeinschaft gratis an die Tops – die Aufteilung folgt."];
     if(vorl) hinweise.push(vorlText(vorl));
     hinweise.push("Nur erfasste Tage – Zeiten ohne Statistik fehlen in den Summen.");
     $("ertrag-hinweis").innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg><div>'+hinweise.join("<br>")+'</div>';
