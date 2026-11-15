@@ -478,7 +478,7 @@ button,input{font-family:inherit;font-size:inherit;color:inherit}
   function ertrag(s){return (s.erspOk&&s.wertOk&&s.mitDaten)?s.ersp+s.wert:null}
   function ertragKachel(s){
     var e=ertrag(s);
-    return '<div class="kpi"><div class="k">Ertrag</div><div class="v">'+(e==null?"–":"≈ "+nf(e,2))+'<i>€</i></div>'+
+    return '<div class="kpi" style="grid-column:1/-1"><div class="k">Ertrag</div><div class="v">'+(e==null?"–":"≈ "+nf(e,2))+'<i>€</i></div>'+
       '<div class="s">'+(e==null?"Tarife fehlen":eurS(s.ersp)+" gespart · "+eur(s.wert)+" Einsp."+(s.wertVorl?"*":""))+'</div></div>';
   }
   function vorlText(s){return s.wertVorl?"* OeMAG-Preis für diesen Monat noch nicht veröffentlicht, vorläufig mit "+monatName(s.wertVorl)+" gerechnet.":""}
@@ -496,6 +496,10 @@ button,input{font-family:inherit;font-size:inherit;color:inherit}
       k("var(--c-direkt)","Direktverbrauch",x.direkt,"Eigenverbrauch "+pct(x.pv?x.direkt/x.pv:null))+
       k("var(--c-pv)","Einspeisung",x.einsp,"")+
       k("var(--c-bezug)","Bezug",x.bezug,"Autarkie "+pct(x.verbr?x.direkt/x.verbr:null))+
+      // Statischer EDA-Schluessel: Top 1, 2, 3 und Allgemein je 25 % der Einspeisung (nicht der Erzeugung -
+      // den Direktverbrauch nimmt der Allgemeinstrom vorher selbst). Zugeteilt wird nur, was das Top
+      // in der jeweiligen Viertelstunde braucht; der Wert ist deshalb die Obergrenze.
+      k("var(--c-pv)","PV-Anteil je Top",x.einsp*0.25,"25 % der Einspeisung, höchstens")+
       ertragKachel(aggregieren(heute(),heute()));
     $("heute-meta").textContent="bis "+uhr(new Date(L.stand));
   }
