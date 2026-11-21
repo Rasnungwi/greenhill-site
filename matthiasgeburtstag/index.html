@@ -34,8 +34,8 @@
       <p class="eyebrow">Privatvorstellung</p>
       <h2>Einlass nur mit Kennwort</h2>
       <div class="line"><img class="ava" src="img/bomba-head.webp" alt="" width="48" height="48"><div class="bubble"><b>Bomba</b>Halt! Hier kommt nur rein, wer das geheime Datum kennt.</div></div>
-      <label class="gate-label" for="gatePw">Kennwort (TT.MM.JJJJ)</label>
-      <input id="gatePw" class="gate-input" type="text" inputmode="numeric" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="TT.MM.JJJJ" required>
+      <label class="gate-label" for="gatePw">Kennwort: ein Datum – nur die Ziffern tippen, die Punkte kommen von selbst</label>
+      <input id="gatePw" class="gate-input" type="text" inputmode="numeric" pattern="[0-9.]*" maxlength="10" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="TT.MM.JJJJ" required>
       <p class="gate-err" id="gateErr" role="alert"></p>
       <button class="btn block" type="submit" id="gateBtn">🎟️ Einlass</button>
     </form>
@@ -49,6 +49,11 @@
       if (location.protocol === "http:" && location.hostname !== "localhost") { location.replace("https://" + location.host + location.pathname); return; }
       err.textContent = "Dieser Browser kann die Seite leider nicht entschlüsseln."; btn.disabled = true; return;
     }
+    // Nur Ziffern annehmen und die Punkte automatisch setzen (iPhone-Zifferntastatur hat keinen Punkt)
+    input.addEventListener("input", () => {
+      const d = input.value.replace(/\D/g, "").slice(0, 8);
+      input.value = d.length > 4 ? d.slice(0, 2) + "." + d.slice(2, 4) + "." + d.slice(4) : d.length > 2 ? d.slice(0, 2) + "." + d.slice(2) : d;
+    });
     let payload = null;
     const load = () => payload || (payload = fetch("app.enc.json", { cache: "no-store" }).then((r) => r.json()));
     async function unlock(raw, quiet) {
@@ -66,7 +71,7 @@
       try { await unlock(input.value); }
       catch (x) {
         btn.disabled = false; btn.textContent = "🎟️ Einlass";
-        err.textContent = x.message === "format" ? "Bitte ein Datum eingeben, z. B. 01.01.2000." : "Falsches Kennwort. Nochmal, Kleiner!";
+        err.textContent = x.message === "format" ? "Bitte ein ganzes Datum eingeben: 8 Ziffern, z. B. 01012000." : "Falsches Kennwort. Nochmal, Kleiner!";
         form.classList.remove("wobble"); void form.offsetWidth; form.classList.add("wobble"); input.select();
       }
     });
