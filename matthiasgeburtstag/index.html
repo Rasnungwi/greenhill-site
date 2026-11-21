@@ -55,7 +55,7 @@
       input.value = d.length > 4 ? d.slice(0, 2) + "." + d.slice(2, 4) + "." + d.slice(4) : d.length > 2 ? d.slice(0, 2) + "." + d.slice(2) : d;
     });
     let payload = null;
-    const load = () => payload || (payload = fetch("app.enc.json?v=965c456b32", { cache: "no-store" }).then((r) => r.json()));
+    const load = () => payload || (payload = fetch("app.enc.json?v=4a8350b32a", { cache: "no-store" }).then((r) => r.json()));
     async function unlock(raw, quiet) {
       const pw = norm(raw); if (pw.length !== 8) throw new Error("format");
       const p = await load();
