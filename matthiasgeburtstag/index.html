@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
+  <meta name="theme-color" content="#2a170c">
+  <title>45 Jahre · Zwei Brüder · Ein Abenteuer</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🎬%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rye&family=Alfa+Slab+One&family=Nunito:wght@600;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="locked">
+  <div class="vignette" aria-hidden="true"></div>
+  <div class="grain" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <div class="reel" id="reel" aria-label="Fortschritt"></div>
+    <button class="icon-btn" id="sound" aria-pressed="false" aria-label="Ton und Musik einschalten" title="Ton und Musik">🔇</button>
+  </header>
+
+  <main id="app" aria-live="polite"></main>
+
+  <div id="fx" class="fx" aria-hidden="true"></div>
+  <div id="overlay" class="overlay" hidden></div>
+  <div id="toast" class="toast" hidden></div>
+  <canvas id="confetti" aria-hidden="true"></canvas>
+
+  
+  <div id="gate" class="gate">
+    <form class="poster gate-card" id="gateForm" autocomplete="off">
+      <p class="eyebrow">Privatvorstellung</p>
+      <h2>Einlass nur mit Kennwort</h2>
+      <div class="line"><img class="ava" src="img/bomba-head.webp" alt="" width="48" height="48"><div class="bubble"><b>Bomba</b>Halt! Hier kommt nur rein, wer das geheime Datum kennt.</div></div>
+      <label class="gate-label" for="gatePw">Kennwort (TT.MM.JJJJ)</label>
+      <input id="gatePw" class="gate-input" type="text" inputmode="numeric" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="TT.MM.JJJJ" required>
+      <p class="gate-err" id="gateErr" role="alert"></p>
+      <button class="btn block" type="submit" id="gateBtn">🎟️ Einlass</button>
+    </form>
+  </div>
+  <script>
+  (() => {
+    const norm = (s) => { let d = String(s).replace(/\D/g, ""); if (d.length === 6) d = d.slice(0, 4) + "19" + d.slice(4); return d; };
+    const b64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+    const form = document.getElementById("gateForm"), input = document.getElementById("gatePw"), err = document.getElementById("gateErr"), btn = document.getElementById("gateBtn");
+    if (!window.crypto || !crypto.subtle) {
+      if (location.protocol === "http:" && location.hostname !== "localhost") { location.replace("https://" + location.host + location.pathname); return; }
+      err.textContent = "Dieser Browser kann die Seite leider nicht entschlüsseln."; btn.disabled = true; return;
+    }
+    let payload = null;
+    const load = () => payload || (payload = fetch("app.enc.json", { cache: "no-store" }).then((r) => r.json()));
+    async function unlock(raw, quiet) {
+      const pw = norm(raw); if (pw.length !== 8) throw new Error("format");
+      const p = await load();
+      const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(pw), "PBKDF2", false, ["deriveKey"]);
+      const key = await crypto.subtle.deriveKey({ name: "PBKDF2", salt: b64(p.salt), iterations: p.iter, hash: "SHA-256" }, base, { name: "AES-GCM", length: 256 }, false, ["decrypt"]);
+      const code = new TextDecoder().decode(await crypto.subtle.decrypt({ name: "AES-GCM", iv: b64(p.iv) }, key, b64(p.data)));
+      try { localStorage.setItem("m45-pass", pw); } catch (e) {}
+      document.getElementById("gate").remove(); document.body.classList.remove("locked");
+      const s = document.createElement("script"); s.src = URL.createObjectURL(new Blob([code], { type: "text/javascript" })); document.body.appendChild(s);
+    }
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault(); err.textContent = ""; btn.disabled = true; btn.textContent = "Prüfe …";
+      try { await unlock(input.value); }
+      catch (x) {
+        btn.disabled = false; btn.textContent = "🎟️ Einlass";
+        err.textContent = x.message === "format" ? "Bitte ein Datum eingeben, z. B. 01.01.2000." : "Falsches Kennwort. Nochmal, Kleiner!";
+        form.classList.remove("wobble"); void form.offsetWidth; form.classList.add("wobble"); input.select();
+      }
+    });
+    let saved = null; try { saved = localStorage.getItem("m45-pass"); } catch (e) {}
+    if (saved) unlock(saved).catch(() => { try { localStorage.removeItem("m45-pass"); } catch (e) {} });
+    else input.focus();
+  })();
+  </script>
+</body>
+</html>
