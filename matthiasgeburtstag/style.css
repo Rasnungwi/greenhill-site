@@ -256,10 +256,15 @@ h2 { font-family: var(--western); font-size: clamp(24px, 5.6vw, 38px); color: va
 .memory { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 12px 0 0; }
 .memory button {
   aspect-ratio: 3 / 4; border-radius: 10px; border: 3px solid var(--ink); font-size: clamp(30px, 9vw, 44px); padding: 0;
-  background: repeating-linear-gradient(45deg, var(--red) 0 8px, #9a2818 8px 16px); color: transparent; transition: transform .25s;
+  display: grid; place-items: center; line-height: 1; color: var(--ink); -webkit-appearance: none; appearance: none;
+  background: repeating-linear-gradient(45deg, var(--red) 0 8px, #9a2818 8px 16px);
 }
-.memory button.up, .memory button.ok { background: #fff8e6; color: inherit; transform: rotateY(180deg) scaleX(-1); }
+/* Bild als eigenes Element: verdeckt = unsichtbar, aufgedeckt = sichtbar (kein 3D, keine transparente Schrift – iPhone-sicher) */
+.memory button .face { visibility: hidden; opacity: 0; }
+.memory button.up, .memory button.ok { background: #fff8e6; animation: flipcard .25s ease-out; }
+.memory button.up .face, .memory button.ok .face { visibility: visible; opacity: 1; }
 .memory button.ok { background: #cfe8b9; }
+@keyframes flipcard { 0% { transform: scaleX(.05); } 100% { transform: scaleX(1); } }
 .hunt { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 12px 0 8px; }
 .hunt button { aspect-ratio: 1; border-radius: 12px; border: 3px solid rgba(43, 22, 8, .35); background: #e9cf98; font-size: clamp(34px, 11vw, 52px); padding: 0; touch-action: manipulation; }
 .hunt button.hit { background: #cfe8b9; }
