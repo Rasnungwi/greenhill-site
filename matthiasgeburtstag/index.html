@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Rye&family=Alfa+Slab+One&family=Nunito:wght@600;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=a916a2cb20">
 </head>
 <body class="locked">
   <div class="vignette" aria-hidden="true"></div>
@@ -55,7 +55,7 @@
       input.value = d.length > 4 ? d.slice(0, 2) + "." + d.slice(2, 4) + "." + d.slice(4) : d.length > 2 ? d.slice(0, 2) + "." + d.slice(2) : d;
     });
     let payload = null;
-    const load = () => payload || (payload = fetch("app.enc.json", { cache: "no-store" }).then((r) => r.json()));
+    const load = () => payload || (payload = fetch("app.enc.json?v=965c456b32", { cache: "no-store" }).then((r) => r.json()));
     async function unlock(raw, quiet) {
       const pw = norm(raw); if (pw.length !== 8) throw new Error("format");
       const p = await load();
